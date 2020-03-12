@@ -1,0 +1,7 @@
+## Report section
+This is report is meant to be used as a section, or child document, of a struct_report.
+The report_section object is expected to be in the environment as "S".
+
+```{r}
+S$models
+```

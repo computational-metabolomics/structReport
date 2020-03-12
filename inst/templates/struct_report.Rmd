@@ -1,0 +1,41 @@
+---
+title: "`r R$title`"
+author: "`r R$author`"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+```
+
+# This is the basic template for a struct report document.
+The report object is "R" in the workspace, and the current data is "D". There is
+no model, as the idea is to iterate over the sections, with each section potentially
+using a different model.
+
+To function correctly with any report sections included in the object it should include
+a section of r code that loops over and knits the report_sections.
+
+The model should already have been trained.
+
+```{r,echo=FALSE, include=TRUE,eval=length(R)>0}
+
+# loop over child docs
+out=NULL
+counter=1
+for (k in 1:length(R)) {
+    # set the section object for current child
+    S = R$sections[[k]]
+    # set the model for this section
+    MS=NULL
+    if (!(is.null(R$sections[[k]]$model_name))) {
+        MS = M[counter]
+        counter=counter+1 # only increments if model_name isn't NULL
+    }
+  out <- c(out, knitr::knit_child(R$sections[[k]]$markdown,quiet=TRUE,envir=environment()))
+}
+```
+
+```{r, echo=FALSE, results="asis",eval=length(R)>0}
+cat(paste(out, collapse = '\n'))
+```
