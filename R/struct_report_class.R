@@ -17,7 +17,8 @@ struct_report = function(
         toc_depth=2,
         markdown=system.file(package='structReport','templates/struct_report.Rmd',mustWork = TRUE),
         sections=list(),
-        model_name=NULL
+        model_name=NULL,
+        ...
     ) {
 
     # new object
@@ -29,7 +30,8 @@ struct_report = function(
         sections=sections,
         model_name = model_name,
         toc=toc,
-        toc_depth=toc_depth
+        toc_depth=toc_depth,
+        ...
     )
 
     return(out)
@@ -212,8 +214,23 @@ setMethod("+",
 setMethod("+",
     signature(e1 = 'report_section',e2 = 'report_section'),
     definition = function(e1,e2) {
-        ML = struct_report()
+        ML = struct_report(title='Title')
         ML$sections= c(e1,e2)
+        return(ML)
+    }
+)
+
+#' @rdname struct_report
+#' @export
+#' @examples
+#' MS = struct_report() + struct_report()
+#'
+#' @return a struct report list containing the combined sections
+setMethod("+",
+    signature(e1 = 'struct_report',e2 = 'struct_report'),
+    definition = function(e1,e2) {
+        ML = struct_report(title='Title')
+        ML$sections= c(e1$sections,e2$sections)
         return(ML)
     }
 )
@@ -234,6 +251,25 @@ setMethod("build_report",
         rmarkdown::render(R$markdown,output_file=outfile,quiet=TRUE,output_format = fmt)
     }
 )
+
+#' @rdname struct_report
+#' @export
+setMethod("build_report",
+    signature('struct_report','iterator','DatasetExperiment','character'),
+    definition = function(R,M,D,outfile) {
+        
+        # check M matches expected model
+        is_valid(R,M) # error if not
+        
+        # compile format options
+        fmt=eval(parse(text=paste0(R$format,'(toc=',R$toc,',toc_depth=',R$toc_depth,')')))
+        
+        # render the document
+        rmarkdown::render(R$markdown,output_file=outfile,quiet=TRUE,output_format = fmt)
+    }
+)
+
+
 
 #' @rdname struct_report
 #' @export

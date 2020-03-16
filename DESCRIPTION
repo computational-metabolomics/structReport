@@ -17,7 +17,9 @@ Collate:
     'report_section_class.R'
     'mean_centre_section.R'
     'pca_section.R'
+    'print_fcns.R'
     'struct_report_class.R'
+    'struct_report_list_class.R'
 Suggests: 
     rmarkdown,
     knitr,
