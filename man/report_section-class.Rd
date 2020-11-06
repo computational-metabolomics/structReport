@@ -6,5 +6,5 @@
 \alias{.report_section}
 \title{report_section object}
 \description{
-Struct reports contain parameters for the child sections of a struct report.
+struct reports contain parameters for the child sections of a struct report.
 }

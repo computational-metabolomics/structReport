@@ -2,19 +2,19 @@
 #'
 #' Builds a struct report using the input data and writes the output to the specified location.
 #' @param R A struct_report object
-#' @param D A DatasetExperiment object
-#' @param outfile A path/filename to save the ouput to
-#' @param ... additional report specific inputs
+#' @param outfile A path/filename to save the output to
 #' @return A rendered markdown file
 #' @export
-setGeneric("build_report",function(R,M,D,outfile,...)standardGeneric("build_report"))
+setGeneric("build_report",function(R,outfile)standardGeneric("build_report"))
 
-#' Is model valid for report
-#'
-#' Checks if the provided model is valid for a specific report object by comparing the class of the model with the model_name slot of all report sections.
-#' @param R A struct_report object
-#' @param M a struct_model object
-#' @param ... additional inputs
-#' @return TRUE or throws an error
+
+#' Creating Report sections from an object
+#' 
+#' This method converts the input \code{struct} object into a report section for use with
+#' other reporting objects such as \code{struct_report} and methods like \code{build_report}.
+#' @param obj A \code{struct_class} object
+#' @param subsection A list of report sections to include as subsections.
+#' @param ... additional report specific parameters
+#' @return A \code{report_section} object with pre-populated slots based on the input object.
 #' @export
-setGeneric("is_valid",function(R,M,...)standardGeneric("is_valid"))
+setGeneric("as_report_section",function(obj,subsection,...)standardGeneric("as_report_section"))

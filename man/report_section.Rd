@@ -2,13 +2,18 @@
 % Please edit documentation in R/report_section_class.R
 \name{report_section}
 \alias{report_section}
+\alias{length,report_section-method}
 \title{Constructor for report_section objects}
 \usage{
 report_section(
-  model_name = NULL,
-  markdown = system.file(package = "structReport", "templates/report_section.Rmd",
-    mustWork = TRUE)
+  object = NULL,
+  markdown = system.file(package = "structReport", "templates/default_object.Rmd",
+    mustWork = TRUE),
+  subsection = NULL,
+  ...
 )
+
+\S4method{length}{report_section}(x)
 }
 \arguments{
 \item{markdown}{path and filename of markdown template to use for the section}
@@ -17,7 +22,15 @@ report_section(
 }
 \value{
 a struct_class object
+
+the number of sections in a struct_report
 }
 \description{
 Creates a new \linkS4class{report_section} object and populates the slots.
+}
+\examples{
+# a section with 2 subsections
+MS = report_section*(report_section()+report_section())
+length(MS) # 2
+
 }

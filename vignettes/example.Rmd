@@ -1,0 +1,558 @@
+---
+title: "Introduction to structReport"
+author: 
+- name: Gavin R Lloyd
+  affiliation: Phenome Centre Birmingham, University of Birmingham, UK
+  email: g.r.lloyd@bham.ac.uk
+- name: Ralf J Weber
+  affiliation: Phenome Centre Birmingham, University of Birmingham, UK
+  email: r.j.weber@bham.ac.uk
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2  
+    number_sections: true  
+    toc_float: true
+package: structReport
+vignette: >
+  %\VignetteIndexEntry{Introduction to structReport}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+---
+  
+```{r, include=FALSE}
+  knitr::opts_chunk$set(
+  dpi=72,
+  fig.width=5,
+  fig.height=5.5
+  )
+  set.seed(57475)
+  library(structToolbox)
+  library(structReport)
+```
+  
+# Introduction
+The aim of this vignette is to use demonstrate the use of `structReport` to generate
+simple markdown documents for data analysis workflows implemented using the `struct` framework.
+  
+# Getting started
+The latest version of `structReport` compatible with your current R version can be installed using `BiocManager`.
+  
+```{r, eval=FALSE, include=TRUE}
+# install BiocManager if not present
+if (!requireNamespace("BiocManager", quietly = TRUE))
+install.packages("BiocManager")
+
+# install structReport and dependencies
+BiocManager::install("structReport",dependencies=TRUE)
+  
+```
+  
+# Report building blocks
+In `structReport` we have defined a simple report structure that forms the basis 
+of the package. 
+  
+## Document settings
+A key component of markdown documents is the yaml header, where various settings 
+are used to define e.g. title, author, document format etc. In `structReport`
+this has implemented as a `struct_report` object. The `struct_report` object includes all
+of the standard `struct` slots as well as slots used to define the yaml content of 
+a report. Every report in `structReports` will therefore begin with a `struct_report` object.
+In addition to the standard struct slots and the yaml slots there is a one additional slot:
+  
+- `sections`: A list of `report_section` objects defining the content of the report.
+
+`report_section` objects are the second building block of a report and are discussed in the following section.
+
+```{r}
+# The first building block of a report
+R = struct_report(
+  title='Example report',
+  author = 'Mr Happy',
+  format = 'html_document',
+  toc = TRUE,
+  toc_depth = 2,
+  sections= list()
+)
+```
+  
+## Report sections
+  
+The `report_section` object is used to define the content of sections to appear in a report. `report_section` objects
+have three slots in addition to the standard ones defined by the `struct` package:
+  
+- `object`: The `struct` object this section refers to.
+- `markdown`: Path to a markdown child document that will be knit into the main document.
+- `subsection`: A list of `report_section` objects that are subsections of the current section.
+  
+  
+```{r}
+RS = report_section(
+  object=DatasetExperiment(), # or model, iterator, chart etc
+  markdown='default_object.Rmd',
+  subsection = list()
+)
+```
+
+Report sections can be added to a report creating a list of sections and assigning them to
+the `sections` slot of `struct_report` object for the report.
+
+```{r}
+R = struct_report(
+  title='Example report',
+  author = 'Mr Happy',
+  format = 'html_document',
+  toc = TRUE,
+  toc_depth = 2,
+  sections=list(
+    RS = report_section(
+      object=DatasetExperiment(), # or model, iterator, chart etc
+      markdown='default_object.Rmd',
+      subsection = list()
+    )
+  )
+)
+```
+
+Alternatively the "+" operator can be used to add sections to a report.
+
+```{r}
+R = struct_report(
+  title='Example report',
+  author = 'Mr Happy',
+  format = 'html_document',
+  toc = TRUE,
+  toc_depth = 2) +
+  report_section(
+    name = 'Section 1',
+    object=DatasetExperiment(), 
+    markdown='default_object.Rmd'
+  ) +
+  report_section(
+    name = 'Section 2',
+    object=DatasetExperiment(), 
+    markdown='default_object.Rmd'
+  ) 
+```
+
+Subsections can be included by assigning `report_section` objects to the `subsection` slot of
+other `report_section` objects.
+
+```{r}
+R = struct_report(
+  title='Example report',
+  author = 'Mr Happy'
+) +
+  report_section(
+    name = 'Section 1',
+    subsection = list(
+      report_section(
+        name = 'Section 1.1')
+    )
+  ) +
+  report_section(
+    name = 'Section 2'
+  ) 
+```
+
+Internally `structReport` uses two markdown documents to automatically handle the 
+setting of header levels and insertion of sections. 
+
+## Markdown templates
+The file specified in the `markdown` slot of a `report_section` will be inserted as 
+a child document into the report as the output for the section. A basic "default_object.Rmd" is provided
+but can be replaced by a custom markdown document if you wish. `strucReports` makes the 
+object assigned to the `object` slot of a `report_section` available for use 
+within the markdown, from which you can extract names, descriptions, parameter values 
+outputs etc.
+
+The default markdown template is very basic and doesnt require any input parameters.
+However, because `struct_section` is derived from `struct_class` you can extend 
+it and include input parameters to add custom options to your report e.g. font.
+
+# Building the report
+When the `struct_report` is ready and contains all the sections you need the
+`build_report` method can be used to generate the report.
+
+## Creating reports from struct objects
+`structReport` defines a `as_report_section` method to enable you to quickly
+generate a basic report structure from `struct` based objects. 
+
+```{r}
+# a struct model object for conducting PCA
+M = PCA()
+
+# generate a report section from the model
+RS = as_report_section(M)
+RS
+```
+
+The generated `report_section` object has already been populated with default values from
+the model object.
+
+**NOTE: The report creates a snapshot of the model at the moment the report object is created.
+The model should therefore be trained _before_ creating the model object, or the results will not
+be available to the report.**
+
+## Default Rmd template
+The default Rmd template is very basic:
+
+- The name slot of the report section is used as the section heading.
+- The description slot of the report section is used to generate the first paragraph.
+- If the object is a chart object, then the object from the _parent_ section is used to plot the chart.
+This means that charts can only be subsections of a report section that has a model object that
+is appropriate for the chart e.g. a PCA scores plot needs a PCA model object in the parent section.
+
+# Example
+We demonstrate this for the Iris dataset and use `structToolbox` to implement a 
+simple workflow to conduct a PCA.
+
+First, we load the data, create our model and some charts objects.
+
+```{r}
+# Dataset
+D = iris_DatasetExperiment()
+
+# PCA model
+M = mean_centre() + PCA(number_components = 4)
+# apply the model or the results wont be reflected in the report.
+M = model_apply(M,D) 
+
+# scree plot
+C1 = pca_scree_plot()
+
+# scores plot
+C2 = pca_scores_plot(factor_name = 'species')
+
+```
+
+Now we create our report structure using the provided objects.
+
+```{r}
+## start by setting yaml
+R = struct_report(
+  title='Example report',
+  author= 'Mr Happy'
+) 
+
+## create a section describing the data by using the struct object name and description
+S1 = as_report_section(D)
+
+# create a section for our PCA model sequence
+# add some details to the model sequence that will automatically included when 
+# the report section is generated.
+M$name = 'PCA workflow'
+M$description = paste0('A model sequence consiting of two steps: 1) mean ',
+  'centring and 2) PCA. Eaxch step is described in the following subsections.')
+
+# include subsections for each chart
+S2 = as_report_section(M,
+  subsection = list(
+    as_report_section(C1),
+    as_report_section(C2)
+  )
+)
+
+# combine into a report
+R = R + S1 + S2
+R
+```
+
+The final object is a report with two sections, and the second section has two
+subsections, one for each chart.
+
+An alternative, and maybe more transparent, approach to create the same report is
+to create each section explicitly, instead of the using the `as_report_section` method.
+This makes it easier to add custom headers and descriptions to the report sections but 
+requires the model sequence to be split manually e.g. by indexing to generate a 
+section for each step.
+
+```{r}
+R = struct_report(
+  title='Example report',
+  author= 'Mr Happy'
+) +
+  report_section(
+    name = D$name,
+    description = D$description,
+    object = D
+  ) +
+  report_section(
+    name = 'PCA workflow',
+    description = paste0('A model sequence consiting of two steps: 1) mean ',
+  'centring and 2) PCA. Eaxch step is described in the following subsections.'),
+    subsection = list(
+      report_section( # mean centre section
+        object=M[1],
+        name = M[1]$name,
+        description = M[1]$description
+      ),
+      report_section( # pca section
+        object=M[2],
+        name = M[2]$name,
+        description = M[2]$description,
+        subsection = list( 
+          report_section(
+            object=C1, # pca scree plot
+            name = C1$name,
+            description = C1$description
+          ),
+          report_section(
+            object=C2, # pca scores plot
+            name = C2$name,
+            description = C2$description
+          ) 
+        ) 
+      ) 
+    )
+  )
+
+R
+
+```
+
+Calling the `build_report` method on `R` will use `rmarkdown::render` to generate
+a document of the desired format from the markdown templates set for each section.
+
+```{r, eval=FALSE}
+
+build_report(R,'example.docx')
+
+```
+
+
+# Cow/sheep example
+This data is a more complex example involving numerous steps.
+
+## Dataset
+The dataset for this example is `MTBLS79` from the `struct`. It is a  Direct 
+infusion mass spectrometry metabolomics dataset available from Metabolights
+(https://www.ebi.ac.uk/metabolights/MTBLS79). The data has already been 
+signal/batch corrected. We will use the filtered data and apply some preprocessing
+before exploratory analysis. 
+
+```{r,warning=FALSE,message=FALSE}
+DE = MTBLS79_DatasetExperiment(filtered = TRUE)
+DE
+```
+
+Now we create a single model sequence of all processing steps. These steps are described 
+in detail in the vignette for `structToolbox`. When we generate the report later 
+we will incorporate text from that vignette into the report.
+
+```{r,warning=FALSE,message=FALSE}
+
+M = pqn_norm(
+      qc_label='QC',
+      factor_name='sample_type'
+    ) + 
+    knn_impute(
+      neighbours=5
+    ) +
+    glog_transform(
+      qc_label='QC',
+      factor_name='sample_type'
+    ) +
+    mean_centre(
+    ) +
+    PCA(
+      number_components = 2
+    )
+
+# apply the sequence to the data
+M = model_apply(M,DE)
+```
+
+Now we create a number of chart that we'll include in the final report.
+
+```{r}
+
+# Dataset
+CS1a = mv_boxplot(factor_name='class',by_sample = TRUE,label_outliers = FALSE)
+CS1b = mv_boxplot(factor_name='class', by_sample = FALSE,label_outliers = FALSE)
+
+# pmp
+CS3a = pqn_norm_hist()
+
+# PCA by class
+CS4a = pca_scores_plot(
+      factor_name=c('sample_rep','class'),
+      ellipse='none'
+)
+
+# PCA by batch
+CS4b = pca_scores_plot(
+      factor_name=c('batch'),
+      ellipse='none'
+)
+
+```
+
+Now we have everything we need to build our report. We'll add sections for relevant
+steps in the model sequence, and provide descriptions for each. Charts will
+added as subsections where appropriate.
+
+We will break down each part of the report before putting it all together at the end.
+First we define the report yaml using a `struct_report` object.
+```{r}
+R = 
+  struct_report(
+    title = 'A typical workflow for processing and analysing mass spectrometry-based metabolomics data.',
+    author = 'G.R. Lloyd',
+    format = "word_document"
+  ) 
+```
+
+First a simple section with no model defined. The default Rmd template uses
+the `name` slot as the header and the `description` as the contents.
+
+```{r}
+S1 = report_section(
+      name = 'Introduction',
+      description = paste0(
+      'This report provides an overview of a structToolbox workflow implemented ',
+      'to process (e.g. filter features, signal drift and batch correction, ',
+      'normalise and missing value imputation) mass spectrometry data. The ',
+      'workflow exists of methods that are part of the Peak Matrix Processing ',
+      '(pmp) package, including a range of additional filters that are ',
+      'described in Kirwan et al., 2013, 2014.'
+      )
+  ) 
+```
+
+Next we create a section to describe the data, and produce some summary plots. 
+The plots are included as subsections of the main section. The charts use the 
+object from their parent section as input for the plot (`DE` in this case).
+
+For the chart subsections we set `name` = character(0) which using the default
+Rmd template means no header will be generated for these sections i.e. the
+charts will appear under the section header of the parent section.
+
+```{r}
+S2 =  report_section(
+        name = 'Data preparation',
+        object = DE,
+        description = paste0(
+      DE$description,
+      "\n\n",
+      "The `MTBLS79_DatasetExperiment` object included in the `structToolbox` ",
+      "package is a processed version of the MTBLS79 dataset available in peak ",
+      "matrix processing (`r Biocpkg('pmp')``) package.",
+      "\n\n",
+      "Here, we load in the data from the `struct` package 'unfiltered' and apply ,",
+      "the filtering in a model sequence to demonstrate the use of `structReport` ",
+      "with more complex analysis workflows."
+    ),
+      subsection=c(
+      report_section(
+        name=character(0),
+        description='A boxplot of missing values per sample for each group.',
+        object=CS1a
+      ),
+      report_section(
+        name=character(0),
+        description='A boxplot of missing values per feature for each group.',
+        object=CS1b
+      )
+    )
+  ) 
+```
+
+In this section we describe the peak matrix processing steps applied and include 
+some charts for each step. We use the object `name` and `description` in the report
+instead of writing text ourselves. We have also incorporated bulleted list formatting
+into the description which will be interpreted when the report is built.
+```{r}
+
+S3 = report_section(
+        name = 'Normalisation, imputation and scaling',
+        description = paste0(
+          'We will apply a number of common pre-processing steps to the filtered ',
+          'peak matrix that are identical to steps applied in are described in ',
+          'Kirwan et al. 2013, 2014.',
+          '\n\n',
+          '- Probabilistic Quotient Normalisation (PQN)\n',
+          '- k-nearest neighbours imputation (k = 5)\n',
+          '- Generalised log transform (glog)',
+          '\n\n',
+          'These steps prepare the data for multivariate analysis by accounting for ',
+          'sample concentration differences, imputing missing values and scaling ',
+          'the data.'
+    ),
+    subsection = c(
+      report_section( # PQN
+        name = M[1]$name,
+        description = M[1]$description,
+        object = M[1],
+        subsection = 
+          report_section(
+            name=character(0),
+            description=CS3a$description,
+            object = CS3a
+          )
+      ),
+      report_section( # imputation
+        name = M[2]$name,
+        description = M[2]$description,
+        object = M[2]
+      ),
+      report_section( # glog
+        name = M[3]$name,
+        description = M[3]$description,
+        object = M[3]
+      )
+    )
+  )
+```
+
+In the final section we describe Exploratory analysis using PCA scores plots
+to visualise the data by batch and sample group.
+
+```{r}
+S4  = report_section(
+    name = 'Exploratory analysis',
+    object = M[5],
+    description = paste0(
+      'Principal Component Analysis (PCA) can be used to visualise ',
+      'high-dimensional data. It is an unsupervised method that maximises ',
+      'variance in a reduced number of latent variables, or Principal Components.'
+    ),
+    subsection = list(
+      report_section(
+        name=character(0),
+        object = C2,
+        description = paste0(
+        'This plot is very similar to Figure 3b of the original publication. ',
+        'Sample replicates are represented by colours and samples groups ',
+        '(C = cow and S = Sheep) by different shapes.'
+        )
+      ),
+      report_section(
+        name=character(0),
+        object = C3,
+        description = paste0(
+        'Plotting the scores and colouring by Batch indicates that the ',
+        'signal/batch correction was effective as all batches are overlapping.'
+        )
+      )
+    )
+  )
+```
+  
+The final report can be converted to the chosen format (word docx in this case)
+by using the `build_report` method.
+
+```{r,eval = FALSE}
+REPORT = R+S1+S2+S3+S4
+build_report(REPORT,'MTBLS79_example.docx')
+```
+
+
+
+
+
+
+
+
+
+

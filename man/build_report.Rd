@@ -4,16 +4,12 @@
 \alias{build_report}
 \title{Build struct report}
 \usage{
-build_report(R, M, D, outfile, ...)
+build_report(R, outfile)
 }
 \arguments{
 \item{R}{A struct_report object}
 
-\item{D}{A DatasetExperiment object}
-
-\item{outfile}{A path/filename to save the ouput to}
-
-\item{...}{additional report specific inputs}
+\item{outfile}{A path/filename to save the output to}
 }
 \value{
 A rendered markdown file

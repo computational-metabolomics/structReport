@@ -1,7 +1,37 @@
+```{r,echo=FALSE,include=FALSE}
 ## Report section
-This is report is meant to be used as a section, or child document, of a struct_report.
-The report_section object is expected to be in the environment as "S".
+# This is report is meant to be used as a section, or child document, of a struct_report.
+# The report_section object is expected to be in the environment as "S".
 
-```{r}
-S$models
+# use default if no markdown provided
+if (is.null(S$markdown)) {
+    S$markdown=system.file(package='structReport','templates/default_object.Rmd',mustWork = TRUE)
+}
+p2md=system.file(package='structReport','templates/report_section.Rmd',mustWork = TRUE)
 ```
+
+```{r, echo=FALSE, include=TRUE,results='asis',warning=FALSE,message=FALSE}
+    txt=knitr::knit_child(input=S$markdown,quiet=TRUE)
+    cat(paste(txt, collapse = '\n\n'))
+```
+
+
+```{r, echo=FALSE,include=TRUE,eval=length(S)>0,results='asis',warning=FALSE,message=FALSE}
+# loop over child docs
+G=S
+txt=NULL
+for (k in seq_len(length(G))) {
+    # create env
+    E=new.env(parent = as.environment(2))
+    # set the section object for current child
+    E$S = G$subsection[[k]]
+    # set header level
+    E$HDR_LVL = HDR_LVL+1
+    # set parent model
+    E$parent_object=S$object
+    # add child
+    txt=c(txt,knitr::knit_child(input=p2md,quiet=TRUE,envir=E))
+}
+cat(paste(txt, collapse = '\n'))
+```
+

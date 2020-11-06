@@ -1,0 +1,62 @@
+
+```{r,echo=FALSE,include=TRUE,results='asis',fig.width=5,fig.height=5.5,warning=FALSE,message=FALSE}
+
+if (length(S$name)>0) {
+    cat(paste0(strrep('#',HDR_LVL),' ',S$name,'\n')) # object name
+}
+
+if (is(S$object,'model') | is(S$object,'iterator')) {
+    if (any(nchar(S$description)>0)) {
+        cat(paste0(S$description,'\n\n'))
+    }
+    
+    p=param_ids(S$object)
+    
+    if (length(p)==0) {
+        break
+    }    
+    
+    cat('The input parameters were:\n\n')
+    
+    for (k in seq_len(length(p))) {
+        # get object
+        obj=param_obj(S$object,p[k])
+        
+        # limit to length three
+        len=min(3,length(param_value(S$object,p[k])))
+        if (len>1) {
+            pre='['
+            ell=', ...]'
+        } else {
+            pre=''
+            ell=''
+        }
+        str=paste0(
+            pre,
+            paste0(param_value(S$object,p[k])[1:len],collapse=', '),
+            ell
+        )
+        
+        if (is(obj,'entity')) {
+            cat('- **',obj$name,'**: ',str,sep='')
+        } else {
+            cat('- **',p[k],'**: ',str,sep='')
+        }
+        cat('\n')
+    }
+    cat('\n')
+} else if (is(S$object,'chart')) {
+    g=chart_plot(S$object,parent_object)
+    print(g)
+    cat('\n\n')
+    if (length(S$description)>0) {
+        cat(paste0(S$description,collapse='. '),'\n\n',sep='')
+    }
+    cat('\n\n')
+} else {
+    if (length(S$description)>0) {
+        cat(paste0(S$description,collapse='. '),'\n\n',sep='')
+    }
+}
+
+```

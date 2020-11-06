@@ -6,21 +6,18 @@ Authors@R:
            family = "Lloyd",
            role = c("aut", "cre"),
            email = "g.r.lloyd@bham.ac.uk")
-Description: Quickly and easily build report based on struct models
+Description: Quickly and easily build report based on struct models.
 License: What license it uses
 Encoding: UTF-8
 LazyData: true
-Depends: struct (>= 0.99.6)
-RoxygenNote: 7.0.2
+Depends: struct (>= 1.2.0)
+RoxygenNote: 7.1.1
 Collate: 
     'generics.R'
     'report_section_class.R'
-    'mean_centre_section.R'
-    'pca_section.R'
-    'print_fcns.R'
     'struct_report_class.R'
-    'struct_report_list_class.R'
 Suggests: 
     rmarkdown,
     knitr,
     structToolbox
+VignetteBuilder: knitr

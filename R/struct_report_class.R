@@ -4,36 +4,31 @@
 #' @param title the title of the report.
 #' @param author the author of the report
 #' @param format the format of the report. One of 'html_document','pdf_document','word_document'. Default = 'html_document'
-#' @param markdown the markdown template to use
 #' @param sections a list of report_sections
-#' @param model_name the name of the model required for this report section
 #' @return a struct_class object
 #' @export
 struct_report = function(
-        title,
-        author='Anon',
-        format='html_document',
-        toc=TRUE,
-        toc_depth=2,
-        markdown=system.file(package='structReport','templates/struct_report.Rmd',mustWork = TRUE),
-        sections=list(),
-        model_name=NULL,
-        ...
-    ) {
-
+    title,
+    author='Anon',
+    format='html_document',
+    toc=TRUE,
+    toc_depth=2,
+    sections=list(),
+    ...
+) {
+    
     # new object
     out = new_struct('struct_report',
         title=title,
         author=author,
         format=format,
-        markdown=markdown,
         sections=sections,
-        model_name = model_name,
         toc=toc,
         toc_depth=toc_depth,
+        markdown=system.file(package='structReport','templates/struct_report.Rmd',mustWork = TRUE),
         ...
     )
-
+    
     return(out)
 }
 
@@ -47,19 +42,18 @@ struct_report = function(
     slots = c(
         title='entity',
         author='entity',
-        format='enum',
+        format='entity',
         sections='list',
-        markdown='entity',
-        model_name='entity',
         toc='entity',
-        toc_depth='entity'
+        toc_depth='entity',
+        markdown='character'
     ),
     prototype=list(
         name = 'Struct Report',
         description = 'Initialises a Struct Report and set yaml, markdown config etc.',
         type = 'Report frontend',
-        .params=c('title','author','format','sections','markdown','model_name','toc','toc_depth'),
-
+        .params=c('title','author','format','sections','toc','toc_depth'),
+        
         title=entity(
             name='Report title',
             description='The title of the report',
@@ -72,24 +66,11 @@ struct_report = function(
             value=NULL,
             type=c('character','NULL')
         ),
-        format=enum(
+        format=entity(
             name='Report format',
-            description='The format of the report. Can be any "html_document", "pdf_document" or "word_document"',
+            description='The format of the report.',
             value='html_document',
-            type=c('character'),
-            allowed=c('html_document','pdf_document','word_document')
-        ),
-        markdown=entity(
-            name='Markdown path/file',
-            description='Path and filename of the markdown template to use for the report',
-            value=character(0),
-            type=c('character')
-        ),
-        model_name=entity(
-            name='Expected model',
-            description='The class name of the model expected for this report section, or NULL if not required.',
-            value=NULL,
-            type=c('character','NULL')
+            type=c('character','rmarkdown_output_format'),
         ),
         toc=entity(
             name='Table of contents',
@@ -102,7 +83,8 @@ struct_report = function(
             description='The number of header levels to include in the table of contents. Default = 2.',
             value=2,
             type=c('numeric','integer')
-        )
+        ),
+        markdown=''
     )
 )
 
@@ -208,7 +190,7 @@ setMethod("+",
 #' @rdname struct_report
 #' @export
 #' @examples
-#' MS = model_report() + model_report()
+#' MS = report_section() + report_section()
 #'
 #' @return a struct report containing the combined sections
 setMethod("+",
@@ -225,149 +207,50 @@ setMethod("+",
 #' @examples
 #' MS = struct_report() + struct_report()
 #'
-#' @return a struct report list containing the combined sections
+#' @return a struct report containing a section for each of the input reports
 setMethod("+",
     signature(e1 = 'struct_report',e2 = 'struct_report'),
     definition = function(e1,e2) {
+        # new report with a section for each report
+        
         ML = struct_report(title='Title')
-        ML$sections= c(e1$sections,e2$sections)
+        
+        S1= report_section(
+                name='Section 1',
+                description='Description of section 1',
+                subsection=e1$sections
+            )
+        S2= report_section(
+            name='Section 2',
+            description='Description of section 2',
+            subsection=e2$sections
+        )
+        ML$sections= c(S1,S2)
         return(ML)
     }
 )
 
+
 #' @rdname struct_report
+#' @importFrom rmarkdown render
 #' @export
 setMethod("build_report",
-    signature('struct_report','model_OR_model_seq','DatasetExperiment','character'),
-    definition = function(R,M,D,outfile) {
-
-        # check M matches expected model
-        is_valid(R,M) # error if not
-
-        # compile format options
-        fmt=eval(parse(text=paste0(R$format,'(toc=',R$toc,',toc_depth=',R$toc_depth,')')))
-
-        # render the document
-        rmarkdown::render(R$markdown,output_file=outfile,quiet=TRUE,output_format = fmt)
-    }
-)
-
-#' @rdname struct_report
-#' @export
-setMethod("build_report",
-    signature('struct_report','iterator','DatasetExperiment','character'),
-    definition = function(R,M,D,outfile) {
-        
-        # check M matches expected model
-        is_valid(R,M) # error if not
+    signature('struct_report','character'),
+    definition = function(R,outfile) {
         
         # compile format options
-        fmt=eval(parse(text=paste0(R$format,'(toc=',R$toc,',toc_depth=',R$toc_depth,')')))
+        if (is.character(R$format)) {
+            fmt=eval(parse(text=paste0(R$format,'(toc=',R$toc,',toc_depth=',R$toc_depth,')')))
+        }
         
         # render the document
-        rmarkdown::render(R$markdown,output_file=outfile,quiet=TRUE,output_format = fmt)
+        rmarkdown::render(
+            R@markdown,
+            output_file=outfile,
+            quiet=TRUE,
+            output_format = fmt)
     }
 )
 
 
 
-#' @rdname struct_report
-#' @export
-setMethod("is_valid",
-    signature('struct_report','model'),
-    definition = function(R,M) {
-
-        valid = R$model_name
-
-        # for each report section, get the model
-        L = length(R)
-        if (L>0) {
-            for (k in 1:L) {
-                valid = c(valid,R$sections[[k]]$model_name)
-            }
-        }
-
-        # class of model
-        C = class(M)
-
-        # if all reports use the same model then its ok
-        valid = unique(valid)
-        if (C == valid) {
-            return(TRUE)
-        } else {
-            stop('Model is not a valid match for this report')
-        }
-
-
-    }
-)
-
-#' @rdname struct_report
-#' @export
-setMethod("is_valid",
-    signature('struct_report','model_seq'),
-    definition = function(R,M) {
-
-        valid = R$model_name
-
-        # for each report section, get the model
-        L = length(R)
-        if (L>0) {
-            for (k in 1:L) {
-                valid = c(valid,R$sections[[k]]$model_name)
-            }
-        }
-
-        # class of models in sequence
-        C = NULL
-        if (length(M)>0) {
-            for (k in 1:length(M)) {
-                C = c(C,class(M[k]))
-            }
-        }
-
-        if (length(C)!=length(valid)) {
-            stop('Model sequence is not a valid match for this report (length does not match).')
-        }
-
-        # must be an exact match
-        if (all(C == valid)) {
-            return(TRUE)
-        } else {
-            stop('Model sequence is not a valid match for this report (models do not match).')
-        }
-
-
-    }
-)
-
-#' @rdname struct_report
-#' @export
-setMethod("is_valid",
-    signature('struct_report','iterator'),
-    definition = function(R,M) {
-
-        valid = R$model_name
-
-        # for each report section, get the model
-        L = length(R)
-        if (L>0) {
-            for (k in 1:L) {
-                valid = c(valid,R$sections[[k]]$model_name)
-            }
-        }
-
-        # class of iterator
-        C = class(M)
-
-        # if all reports use the same model then its ok
-        valid = unique(valid)
-        if (C == valid) {
-            return(TRUE)
-        } else {
-            stop('Iterator is not a valid match for this report')
-        }
-
-
-    }
-)
